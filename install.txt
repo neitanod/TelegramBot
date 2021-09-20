@@ -1,0 +1,18 @@
+Quick installation instructions:
+================================
+
+sudo apt install python3 python3-pip
+pip3 install python-dotenv
+pip3 install pyTelegramBotAPI
+sudo apt install imagemagic streamer espeak
+
+# In Telegram, talk to botfather and send:  /newbot
+# Follow instructions and copy bot API KEY into .env file:
+
+$ cat .env
+API_KEY = youSecretApiKeyThatBotfatherGaveYou
+PASSWORD = your_desired_telegram_password
+SUDO_PASSWORD = your_linux_user_password
+
+$crontab -l
+@reboot /path/to/TelegramBot/telegrambot

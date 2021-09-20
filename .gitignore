@@ -1,0 +1,6 @@
+*.jpeg
+*.jpg
+*.png
+.env
+last_admin_chat_id
+log.txt

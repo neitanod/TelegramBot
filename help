@@ -1,0 +1,12 @@
+Available commands:
+
+    reboot
+    shutdown
+    sys <command>
+    say <message> (pronounce out loud with english pronounciation)
+    decir <mensaje> (decir en voz alta con pronunciación en castellano)
+    screen
+    exit / quit / logout
+    reset / restart (bot only)
+    hi
+
