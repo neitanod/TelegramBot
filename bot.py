@@ -9,6 +9,10 @@ load_dotenv()
 API_KEY = str(os.getenv('API_KEY'))
 PASSWORD = str(os.getenv('PASSWORD'))
 SUDO_PASSWORD = str(os.getenv('SUDO_PASSWORD'))
+DISPLAY = str(os.getenv('DISPLAY'))
+DBUS = str(os.getenv('DBUS_SESSION_BUS_ADDRESS'))
+VOICE_ES = str(os.getenv('VOICE_ES', 'es'))
+VOICE_EN = str(os.getenv('VOICE_EN', 'en'))
 authorized = []
 
 bot = telebot.TeleBot(API_KEY)
@@ -63,42 +67,85 @@ def process_message(message):
 
         elif this_chat_id in authorized:
             if message.text.lower().startswith("sudo "):
-                response = str(os.popen("export DISPLAY=:0.0;echo "+SUDO_PASSWORD+" | sudo -S -p \"\" "+remove_prefix(message.text, "sudo ")+' 2>&1').read())
+                if SUDO_PASSWORD is None:
+                    bot.reply_to(message, "SUDO_PASSWORD is not set.")
+                    return
+                response = str(os.popen("echo "+SUDO_PASSWORD+" | sudo -S -p \"\" "+remove_prefix(message.text, "sudo ")+' 2>&1').read())
                 if not response:
                     response = "Done."
                 bot.reply_to(message, response)
             elif message.text.lower() in ["reboot"]:
+                if SUDO_PASSWORD is None:
+                    bot.reply_to(message, "SUDO_PASSWORD is not set.")
+                    return
                 response = str(os.popen("echo "+SUDO_PASSWORD+" | sudo -S -p '' shutdown -r now 2>&1").read())
                 if not response:
                     response = "Done."
                 bot.reply_to(message, response)
             elif message.text.lower() in ["shutdown"]:
+                if SUDO_PASSWORD is None:
+                    bot.reply_to(message, "SUDO_PASSWORD is not set.")
+                    return
                 response = str(os.popen("echo "+SUDO_PASSWORD+" | sudo -S -p '' shutdown now 2>&1").read())
                 if not response:
                     response = "Done."
                 bot.reply_to(message, response)
-            elif message.text.lower().startswith("sys "):
-                response = str(os.popen("export DISPLAY=:0.0;"+remove_prefix(message.text, "sys ")+" 2>&1").read())
+            elif message.text.lower() in ["lock"]:
+                if SUDO_PASSWORD is None:
+                    bot.reply_to(message, "SUDO_PASSWORD is not set.")
+                    return
+                response = str(os.popen("echo "+SUDO_PASSWORD+" | sudo -S -p '' loginctl lock-sessions 2>&1").read())
                 if not response:
                     response = "Done."
                 bot.reply_to(message, response)
+            elif message.text.lower() in ["unlock"]:
+                if SUDO_PASSWORD is None:
+                    bot.reply_to(message, "SUDO_PASSWORD is not set.")
+                    return
+                response = str(os.popen("echo "+SUDO_PASSWORD+" | sudo -S -p '' loginctl unlock-sessions 2>&1").read())
+                if not response:
+                    response = "Done."
+                bot.reply_to(message, response)
+            elif message.text.lower().startswith("sys "):
+                response = str(os.popen(remove_prefix(message.text, "sys ")+" 2>&1").read())
+                if not response:
+                    response = "Done."
+                bot.reply_to(message, response)
+            elif message.text.lower().startswith("notify "):
+                if DBUS == "None":
+                    bot.reply_to(message, "DBUS_SESSION_BUS_ADDRESS is not set.")
+                else:
+                    response = str(os.popen('notify-send "'+remove_prefix(message.text, "notify ")+'" 2>&1').read())
+                    if not response:
+                        response = "Done."
+                    bot.reply_to(message, response)
             elif message.text.lower().startswith("decir "):
                 # Needs espeak with mbrola spanish voices
-                response = str(os.popen('export DISPLAY=:0.0;espeak "'+remove_prefix(message.text, "decir ")+'" -v mb/mb-es2 -p 45 -s 160 2>&1').read())
+                if not (DBUS == "None"):
+                    str(os.popen('notify-send "'+remove_prefix(message.text, "decir ")+'" 2>&1').read())
+                if DISPLAY == "None":
+                    bot.reply_to(message, "DISPLAY is not set.")
+                response = str(os.popen('espeak "'+remove_prefix(message.text, "decir ")+'" -v '+VOICE_ES+' -p 45 -s 160 2>&1').read())
                 if not response:
                     response = "Done."
                 bot.reply_to(message, response)
             elif message.text.lower().startswith("say "):
                 # Needs espeak with mbrola spanish voices
-                response = str(os.popen('export DISPLAY=:0.0;espeak "'+remove_prefix(message.text, "say ")+'" -v mb/mb-en1 -p 45 -s 160 2>&1').read())
+                if not (DBUS == "None"):
+                    str(os.popen('notify-send "'+remove_prefix(message.text, "say ")+'" 2>&1').read())
+                if DISPLAY is None:
+                    bot.reply_to(message, "DISPLAY is not set.")
+                response = str(os.popen('espeak "'+remove_prefix(message.text, "say ")+'" -v '+VOICE_EN+' -p 45 -s 160 2>&1').read())
                 if not response:
                     response = "Done."
                 bot.reply_to(message, response)
             elif message.text.lower() in ["picture","photo","foto"]:
                 # Needs espeak with mbrola spanish voices
                 try:
+                    if DISPLAY is None:
+                        bot.reply_to(message, "DISPLAY is not set.")
                     response = str(os.popen('rm foto0*.jpeg').read())
-                    response = str(os.popen('export DISPLAY=:0.0;streamer -t 4 -r 2 -o foto00.jpeg').read())
+                    response = str(os.popen('streamer -t 4 -r 2 -o foto00.jpeg').read())
                     photo = open("foto03.jpeg", "rb")
                     bot.send_photo(this_chat_id, photo)
                     if not response:
@@ -108,9 +155,11 @@ def process_message(message):
             elif message.text.lower() in ["screen", "screenshot", "pantalla", "captura"]:
                 # Needs espeak with mbrola spanish voices
                 try:
-                    response = str(os.popen('export DISPLAY=:0.0;xhost + 2>&1').read())
+                    if DISPLAY is None:
+                        bot.reply_to(message, "DISPLAY is not set.")
+                    response = str(os.popen('xhost + 2>&1').read())
                     response = str(os.popen('rm screen.png screen.jpg 2>&1').read())
-                    response = str(os.popen('export DISPLAY=:0.0;import -window root screen.png && convert screen.png screen.jpg 2>&1').read())
+                    response = str(os.popen('import -window root screen.png && convert screen.png screen.jpg 2>&1').read())
                     screen = open("screen.jpg", "rb")
                     bot.send_photo(this_chat_id, screen)
                     if not response:
