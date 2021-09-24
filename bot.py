@@ -106,6 +106,12 @@ def process_message(message):
                 if not response:
                     response = "Done."
                 bot.reply_to(message, response)
+            elif message.text.lower() in ["wifi"]:
+                response = str(os.popen("nmcli -t -f active,ssid dev wifi | egrep '^(sí|yes):' | cut -d : -f2 2>&1").read())
+                bot.reply_to(message, response)
+            elif message.text.lower() in ["update"]:
+                response = str(os.popen("git pull").read())
+                bot.reply_to(message, response)
             elif message.text.lower().startswith("sys "):
                 response = str(os.popen(remove_prefix(message.text, "sys ")+" 2>&1").read())
                 if not response:
