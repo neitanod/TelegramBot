@@ -1,12 +1,43 @@
 Available commands:
 
     reboot
-    shutdown
-    sys <command>
-    say <message> (pronounce out loud with english pronounciation)
-    decir <mensaje> (decir en voz alta con pronunciación en castellano)
-    screen
-    exit / quit / logout
-    reset / restart (bot only)
-    hi
+      reboot computer
 
+    shutdown
+      shutdown computer
+
+    sys <command>
+      execute <command> as regular user
+
+    sudo <command>
+      execute <command> as root
+
+    say <message>
+      pronounce out loud with english pronounciation
+
+    decir <mensaje>
+      decir en voz alta con pronunciación en castellano
+
+    screen / pantalla
+      show screenshot
+
+    photo
+      take picture with the webcam
+
+    exit / quit / logout
+      logout bot
+
+    reset / restart
+      restart bot
+
+    update
+      update bot
+
+    ip
+      show public IP address
+
+    wifi
+      show wifi name
+
+    hi
+      salute bot

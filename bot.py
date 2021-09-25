@@ -49,8 +49,8 @@ def process_message(message):
             else:
                 bot.send_message(this_chat_id, "Hi there")
             return
-        elif message.text.lower().startswith("id "):
-            if remove_prefix(message.text, "id ") == PASSWORD:
+        elif message.text.lower().startswith("id ") or message.text.lower().startswith("login "):
+            if remove_prefix(message.text, "id ") == PASSWORD or remove_prefix(message.text, "login ") == PASSWORD:
                 authorized.append(this_chat_id)
                 register_chat_id(str(this_chat_id))
                 bot.send_message(this_chat_id, "Authorized")
@@ -111,6 +111,9 @@ def process_message(message):
                 bot.reply_to(message, response)
             elif message.text.lower() in ["update"]:
                 response = str(os.popen("git pull").read())
+                bot.reply_to(message, response)
+            elif message.text.lower() in ["ip"]:
+                response = str(os.popen("wget -qO- http://ipecho.net/plain | xargs echo").read())
                 bot.reply_to(message, response)
             elif message.text.lower().startswith("sys "):
                 response = str(os.popen(remove_prefix(message.text, "sys ")+" 2>&1").read())
