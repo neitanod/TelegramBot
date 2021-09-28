@@ -224,12 +224,12 @@ last_chat_id_int = last_chat_id()
 
 if last_chat_id_int > 0:
     authorized.append(last_chat_id_int)
-    bot.send_message(last_chat_id_int, "Starting bot.")
+    # bot.send_message(last_chat_id_int, "Starting bot.")
 
 bot.polling()
 
 last_chat_id_int = last_chat_id()
 
-if last_chat_id_int > 0:
-    bot.send_message(last_chat_id_int, "Closing bot.")
+# if last_chat_id_int > 0:
+#     bot.send_message(last_chat_id_int, "Closing bot.")
 
