@@ -1,5 +1,5 @@
 #!/bin/bash
-cd /home/sebas/doc/prj/TelegramBot
+cd "$(dirname "$0")"
 while true; do
     pwd
     /usr/bin/python3 ./bot.py 2>&1 >> log.txt
