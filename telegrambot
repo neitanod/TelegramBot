@@ -2,7 +2,9 @@
 cd "$(dirname "$0")"
 while true; do
     pwd
-    /usr/bin/python3 ./bot.py 2>&1 >> log.txt
+    # /usr/bin/python3 ./bot.py 2>&1 >> log.txt
+    # /home/sebas/telegrambot/bin/python3 ./bot.py 2>&1 >> log.txt
+    /home/sebas/miniconda3/bin/python3 ./bot.py 2>&1 >> log.txt
     sleep 1
     echo "===\n" >> log.txt
 done

@@ -4,3 +4,5 @@
 .env
 last_admin_chat_id
 log.txt
+aliases.json
+data/*

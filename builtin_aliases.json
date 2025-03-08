@@ -1,0 +1,14 @@
+{
+  "ip": {
+    "command": "sys wget -qO- http://ipecho.net/plain | xargs echo",
+    "description": "Muestra la IP pública"
+  },
+  "wifi": {
+    "command": "sys nmcli -t -f active,ssid dev wifi | egrep '^(sí|yes):' | cut -d : -f2",
+    "description": "Muestra el SSID de la red WiFi actual"
+  },
+  "update": {
+    "command": "sys git pull",
+    "description": "Actualiza el bot"
+  }
+}
