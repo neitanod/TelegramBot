@@ -122,19 +122,18 @@ def menu(message):
         # sin incluir el comando real, únicamente su nombre y su descripción.
         # 1) primero los predefinidos
         if builtin_aliases:
-            help_content += "\n\n**Comandos integrados:**\n"
             for alias_name, alias_data in builtin_aliases.items():
                 desc = alias_data.get('description', '')
-                help_content += f"\n- *{alias_name}*\n"
+                help_content += f"- *{alias_name}*    "
                 if desc:
                     help_content += f"  {desc}\n"
 
         # 2) luego los del usuario
         if aliases:
-            help_content += "\n\n**Comandos definidos por el usuario:**\n"
+            help_content += "\n**Comandos definidos por el usuario:**\n"
             for alias_name, alias_data in aliases.items():
                 desc = alias_data.get('description', '')
-                help_content += f"\n- *{alias_name}*\n"
+                help_content += f"- *{alias_name}*    "
                 if desc:
                     help_content += f"  {desc}\n"
 
@@ -143,6 +142,46 @@ def menu(message):
         bot.reply_to(message, help_content, parse_mode="Markdown")
     else:
         bot.reply_to(message, "Just say hi")
+
+
+@bot.message_handler(commands=['aliases'])
+def list_aliases(message):
+    if message.chat.id not in authorized:
+        bot.reply_to(message, "No estás autorizado.")
+        return
+
+    # Construimos la respuesta
+    builtin_text = ""
+    user_text = ""
+
+    # Bloque aliases integrados
+    if builtin_aliases:
+        builtin_text += "**Aliases integrados (solo lectura):**\n"
+        for aname, adata in builtin_aliases.items():
+            cmd = adata.get('command', '')
+            desc = adata.get('description', '')
+            builtin_text += f"\n- *{aname}* => `{cmd}`"
+            if desc:
+                builtin_text += f"\n  {desc}"
+        builtin_text += "\n"
+    else:
+        builtin_text = "No hay aliases integrados predefinidos.\n\n"
+
+    # Bloque aliases de usuario
+    if aliases:
+        user_text += "**Aliases de usuario:**\n"
+        for aname, adata in aliases.items():
+            cmd = adata.get('command', '')
+            desc = adata.get('description', '')
+            user_text += f"\n- *{aname}* => `{cmd}`"
+            if desc:
+                user_text += f"\n  {desc}"
+        user_text += "\n"
+    else:
+        user_text = "No hay aliases de usuario.\n"
+
+    final_msg = builtin_text + "\n" + user_text
+    bot.reply_to(message, final_msg, parse_mode="Markdown")
 
 
 @bot.message_handler()
@@ -155,6 +194,11 @@ def process_message(message):
         # Forzamos el texto a minúscula para chequear los startswith:
         text_lower = message.text.lower().strip()
 
+        # Ayuda
+        if text_lower in ["help", "ayuda", "menu"]:
+            menu(message)
+            return
+          
         # Manejo básico de autenticación y sesión
         if text_lower == "hi":
             if this_chat_id in authorized:
@@ -187,6 +231,9 @@ def process_message(message):
 
         # Aquí sólo entran usuarios autorizados
         if this_chat_id in authorized:
+            if text_lower in ["aliases"]:
+                list_aliases(message)  # ¡Llamamos a la misma función!
+                return
             # Crear/actualizar alias
             if text_lower.startswith("alias "):
                 # parts en crudo
@@ -338,32 +385,35 @@ def process_message(message):
                 bot.reply_to(message, truncate(response, 1000))
 
             elif user_input_lower in ["picture","photo","foto"]:
-                try:
-                    if DISPLAY is None:
-                        bot.reply_to(message, "DISPLAY is not set.")
-                    os.popen('rm foto0*.jpeg').read()
-                    os.popen('streamer -t 4 -r 2 -o foto00.jpeg').read()
-                    with open("foto03.jpeg", "rb") as photo:
-                        bot.send_photo(this_chat_id, photo)
-                except Exception as e:
-                    bot.reply_to(message, str(e))
-
+                 try:
+                     response = str(os.popen('rm data/foto0*.jpeg').read())
+                     response = str(os.popen('export DISPLAY=:0.0;streamer -t 4 -r 2 -o data/foto00.jpeg').read())
+                     photo = open("data/foto03.jpeg", "rb")
+                     bot.send_photo(this_chat_id, photo)
+                     if not response:
+                         response = "Done."
+                 except Exception as e:
+                     bot.reply_to(message, str(e))
             elif user_input_lower in ["screen", "screenshot", "pantalla", "captura"]:
                 try:
                     if DISPLAY is None:
                         bot.reply_to(message, "DISPLAY is not set.")
                     os.popen('xhost +local: 2>&1').read()
-                    os.popen('rm screen.png screen.jpg 2>&1').read()
-                    os.popen('import -window root screen.png && convert screen.png screen.jpg 2>&1').read()
-                    with open("screen.jpg", "rb") as screen:
+                    # Borramos las capturas previas
+                    os.popen('rm data/screen.png data/screen.jpg 2>&1').read()
+                    # Tomamos la nueva captura, guardamos en data
+                    os.popen('import -window root data/screen.png && convert data/screen.png data/screen.jpg 2>&1').read()
+                    with open("data/screen.jpg", "rb") as screen:
                         bot.send_photo(this_chat_id, screen)
                 except Exception as e:
                     bot.reply_to(message, str(e))
-
             else:
-                menu(message)
+                # Si está autorizado pero no coincide con ningún comando:
+                bot.reply_to(message, "Comando desconocido. Use 'help' para ver la ayuda.")
         else:
-            menu(message)
+            # Si NO está autorizado y escribe algo distinto a hi/login/etc.
+            bot.reply_to(message, "Comando desconocido. Use 'help' para ver la ayuda.")
+
     except Exception as e:
         bot.send_message(this_chat_id, "Error: "+str(e))
 
@@ -396,6 +446,17 @@ def truncate(message, max_bytes):
     else:
         return message
 
+
+def create_folder(folder):
+    if not os.path.exists(folder):
+        try:
+            os.makedirs(folder)
+            print(f"Carpeta '{folder}' creada exitosamente.")
+        except Exception as e:
+            print(f"Error al crear carpeta '{folder}': {str(e)}")
+
+# Llamamos a la función para crear la carpeta 'data' si no existe
+create_folder('data')
 
 # Cargamos el último chat ID que estaba autorizado antes (si lo hubiera)
 last_chat_id_int = last_chat_id()

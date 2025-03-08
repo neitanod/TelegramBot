@@ -1,43 +1,19 @@
 Available commands:
 
-    reboot
-      reboot computer
-
-    shutdown
-      shutdown computer
-
-    sys <command>
-      execute <command> as regular user
-
-    sudo <command>
-      execute <command> as root
-
-    say <message>
-      pronounce out loud with english pronounciation
-
-    decir <mensaje>
-      decir en voz alta con pronunciación en castellano
-
-    screen / pantalla
-      show screenshot
-
-    photo
-      take picture with the webcam
-
-    exit / quit / logout
-      logout bot
-
-    reset / restart
-      restart bot
-
-    update
-      update bot
-
-    ip
-      show public IP address
-
-    wifi
-      show wifi name
-
-    hi
-      salute bot
+- *hi*   Salute bot
+- *help*   Show this help
+- *reboot*     Reboot computer
+- *shutdown*   Shutdown computer
+- *lock* / *unlock*  Lock / Unlock computer
+- *sys <command>*   Execute <command> as regular user
+- *sudo <command>*  Execute <command> as root
+- *say <message>*   Pronounce out loud with english pronounciation
+- *decir <mensaje>*    Decir en voz alta con pronunciación en castellano
+- *screen* / *pantalla*  Take screenshot
+- *photo* / *picture* / *foto*   Take picture with the webcam
+- *exit* / *quit* / *logout*   Logout bot
+- *reset* / *restart*  Restart bot
+- *update*           Update bot
+- *alias <alias_name> <aliased_command>*    Add / update an aliased command
+- *describe alias <alias_name> <alias_description>*    Add / update an aliased command
+- *aliases*    List existing aliases
