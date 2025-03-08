@@ -19,7 +19,7 @@ authorized = []
 # Prohibimos alias con estos nombres (creados por el usuario)
 PROHIBITED_ALIAS_NAMES = {
     "alias", "describe", "exit", "quit", "logout",
-    "reset", "restart", "sys", "sudo"
+    "reset", "restart", "sys", "sudo",
     "load_aliases", "help", "menu"
 }
 
@@ -91,11 +91,11 @@ def apply_aliases(message_text):
     args = tokens[1:]
 
     # 1) ¿Está en los aliases predefinidos inmutables?
-    if command in builtin_aliases:
-        alias_replacement = builtin_aliases[command].get('command', '')
+    if command.lower() in builtin_aliases:
+        alias_replacement = builtin_aliases[command.lower()].get('command', '')
     # 2) Si no, ¿está en los aliases creados por el usuario?
-    elif command in aliases:
-        alias_replacement = aliases[command].get('command', '')
+    elif command.lower() in aliases:
+        alias_replacement = aliases[command.lower()].get('command', '')
     else:
         # No es alias, se devuelve tal cual
         return message_text
@@ -118,23 +118,23 @@ def menu(message):
             with open("help", "r", encoding="utf-8") as hf:
                 help_content = hf.read()
 
-        # Mostrar aliases predefinidos primero (builtin_aliases)
+        # En este nuevo modelo, mostramos todos los aliases como "comandos"
+        # sin incluir el comando real, únicamente su nombre y su descripción.
+        # 1) primero los predefinidos
         if builtin_aliases:
-            help_content += "\n\n**Aliases predefinidos:**\n"
+            help_content += "\n\n**Comandos integrados:**\n"
             for alias_name, alias_data in builtin_aliases.items():
-                cmd = alias_data.get('command', '')
                 desc = alias_data.get('description', '')
-                help_content += f"\n- *{alias_name}* => `{cmd}`\n"
+                help_content += f"\n- *{alias_name}*\n"
                 if desc:
                     help_content += f"  {desc}\n"
 
-        # Mostrar aliases editables (aliases)
+        # 2) luego los del usuario
         if aliases:
-            help_content += "\n\n**Aliases:**\n"
+            help_content += "\n\n**Comandos definidos por el usuario:**\n"
             for alias_name, alias_data in aliases.items():
-                cmd = alias_data.get('command', '')
                 desc = alias_data.get('description', '')
-                help_content += f"\n- *{alias_name}* => `{cmd}`\n"
+                help_content += f"\n- *{alias_name}*\n"
                 if desc:
                     help_content += f"  {desc}\n"
 
@@ -152,18 +152,21 @@ def process_message(message):
         if not message.text:
             return
 
+        # Forzamos el texto a minúscula para chequear los startswith:
         text_lower = message.text.lower().strip()
 
-        # Manejo básico de autenticación y session
+        # Manejo básico de autenticación y sesión
         if text_lower == "hi":
             if this_chat_id in authorized:
-                username = str(os.popen("whoami 2>&1").read())
+                username = os.popen("whoami 2>&1").read()
                 bot.send_message(this_chat_id, "Hi " + username)
             else:
                 bot.send_message(this_chat_id, "Hi there")
             return
 
         elif text_lower.startswith("id ") or text_lower.startswith("login "):
+            # Verificamos en crudo contra la password
+            # (Podemos ignorar mayúsculas/minúsculas o no, depende de la preferencia)
             if remove_prefix(message.text, "id ") == PASSWORD or remove_prefix(message.text, "login ") == PASSWORD:
                 authorized.append(this_chat_id)
                 register_chat_id(str(this_chat_id))
@@ -186,7 +189,9 @@ def process_message(message):
         if this_chat_id in authorized:
             # Crear/actualizar alias
             if text_lower.startswith("alias "):
-                parts = remove_prefix(message.text, "alias ").strip().split(None, 1)
+                # parts en crudo
+                parts = remove_prefix(message.text, "alias ").strip().split(None, 2)
+                # Nota: parted a 2, aunque sea
                 if len(parts) < 2:
                     bot.reply_to(message, "Uso: alias <nombre> <comando con o sin '?'>")
                     return
@@ -200,10 +205,10 @@ def process_message(message):
 
                 # Si ya existe, conservamos la descripción
                 old_description = ''
-                if alias_name in aliases:
-                    old_description = aliases[alias_name].get('description', '')
+                if alias_name.lower() in aliases:
+                    old_description = aliases[alias_name.lower()].get('description', '')
 
-                aliases[alias_name] = {
+                aliases[alias_name.lower()] = {
                     'command': alias_command,
                     'description': old_description
                 }
@@ -217,8 +222,8 @@ def process_message(message):
                 if len(parts) < 2:
                     bot.reply_to(message, "Uso: describe alias <nombre> <descripcion>")
                     return
-                alias_name = parts[0]
-                alias_desc = parts[1]
+                alias_name = parts[0].strip().lower()
+                alias_desc = parts[1].strip()
                 if alias_name not in aliases:
                     bot.reply_to(message, f"El alias '{alias_name}' no existe.")
                     return
@@ -232,15 +237,19 @@ def process_message(message):
                 bot.reply_to(message, "Aliases cargados desde archivo.")
                 return
 
-            # Aquí se aplica la unificación con apply_aliases
+            # Aplicamos alias si corresponde
             user_input = apply_aliases(message.text)
-            # Resto de lógica
-            text_lower = user_input.lower()
+            user_input_lower = user_input.lower().strip()
 
-            # -- Se removieron los bloques ip, wifi, update --
-            #    pues ahora son aliases inmutables en builtin_aliases
+            # Bloque para sys <comando>
+            if user_input_lower.startswith("sys "):
+                cmd = remove_prefix(user_input, "sys ")
+                response = os.popen(cmd + " 2>&1").read()
+                if not response:
+                    response = "Done."
+                bot.reply_to(message, truncate(response, 1000))
 
-            if user_input.startswith("sudo "):
+            elif user_input_lower.startswith("sudo "):
                 if SUDO_PASSWORD is None:
                     bot.reply_to(message, "SUDO_PASSWORD is not set.")
                     return
@@ -251,7 +260,7 @@ def process_message(message):
                     response = "Done."
                 bot.reply_to(message, truncate(response, 1000))
 
-            elif user_input.lower() in ["reboot"]:
+            elif user_input_lower in ["reboot"]:
                 if SUDO_PASSWORD is None:
                     bot.reply_to(message, "SUDO_PASSWORD is not set.")
                     return
@@ -262,7 +271,7 @@ def process_message(message):
                     response = "Done."
                 bot.reply_to(message, truncate(response, 1000))
 
-            elif user_input.lower() in ["shutdown"]:
+            elif user_input_lower in ["shutdown"]:
                 if SUDO_PASSWORD is None:
                     bot.reply_to(message, "SUDO_PASSWORD is not set.")
                     return
@@ -273,7 +282,7 @@ def process_message(message):
                     response = "Done."
                 bot.reply_to(message, truncate(response, 1000))
 
-            elif user_input.lower() in ["lock"]:
+            elif user_input_lower in ["lock"]:
                 if SUDO_PASSWORD is None:
                     bot.reply_to(message, "SUDO_PASSWORD is not set.")
                     return
@@ -284,7 +293,7 @@ def process_message(message):
                     response = "Done."
                 bot.reply_to(message, truncate(response, 1000))
 
-            elif user_input.lower() in ["unlock"]:
+            elif user_input_lower in ["unlock"]:
                 if SUDO_PASSWORD is None:
                     bot.reply_to(message, "SUDO_PASSWORD is not set.")
                     return
@@ -295,40 +304,40 @@ def process_message(message):
                     response = "Done."
                 bot.reply_to(message, truncate(response, 1000))
 
-            elif user_input.lower().startswith("notify "):
+            elif user_input_lower.startswith("notify "):
                 if DBUS == "None":
                     bot.reply_to(message, "DBUS_SESSION_BUS_ADDRESS is not set.")
                 else:
-                    response = os.popen('notify-send \"'+remove_prefix(user_input, "notify ")+'\" 2>&1').read()
+                    response = os.popen('notify-send "'+remove_prefix(user_input, "notify ")+'" 2>&1').read()
                     if not response:
                         response = "Done."
                     bot.reply_to(message, truncate(response, 1000))
 
-            elif user_input.lower().startswith("decir "):
+            elif user_input_lower.startswith("decir "):
                 if DBUS != "None":
-                    os.popen('notify-send \"'+remove_prefix(user_input, "decir ")+'\" 2>&1').read()
+                    os.popen('notify-send "'+remove_prefix(user_input, "decir ")+'" 2>&1').read()
                 if DISPLAY == "None":
                     bot.reply_to(message, "DISPLAY is not set.")
                 response = os.popen(
-                    'espeak \"'+remove_prefix(user_input, "decir ")+'\" -v '+VOICE_ES+' -p 45 -s 160 2>&1'
+                    'espeak "'+remove_prefix(user_input, "decir ")+'" -v '+VOICE_ES+' -p 45 -s 160 2>&1'
                 ).read()
                 if not response:
                     response = "Done."
                 bot.reply_to(message, truncate(response, 1000))
 
-            elif user_input.lower().startswith("say "):
+            elif user_input_lower.startswith("say "):
                 if DBUS != "None":
-                    os.popen('notify-send \"'+remove_prefix(user_input, "say ")+'\" 2>&1').read()
+                    os.popen('notify-send "'+remove_prefix(user_input, "say ")+'" 2>&1').read()
                 if DISPLAY is None:
                     bot.reply_to(message, "DISPLAY is not set.")
                 response = os.popen(
-                    'espeak \"'+remove_prefix(user_input, "say ")+'\" -v '+VOICE_EN+' -p 45 -s 160 2>&1'
+                    'espeak "'+remove_prefix(user_input, "say ")+'" -v '+VOICE_EN+' -p 45 -s 160 2>&1'
                 ).read()
                 if not response:
                     response = "Done."
                 bot.reply_to(message, truncate(response, 1000))
 
-            elif user_input.lower() in ["picture","photo","foto"]:
+            elif user_input_lower in ["picture","photo","foto"]:
                 try:
                     if DISPLAY is None:
                         bot.reply_to(message, "DISPLAY is not set.")
@@ -339,11 +348,10 @@ def process_message(message):
                 except Exception as e:
                     bot.reply_to(message, str(e))
 
-            elif user_input.lower() in ["screen", "screenshot", "pantalla", "captura"]:
+            elif user_input_lower in ["screen", "screenshot", "pantalla", "captura"]:
                 try:
                     if DISPLAY is None:
                         bot.reply_to(message, "DISPLAY is not set.")
-                    # os.popen('xhost + 2>&1').read()
                     os.popen('xhost +local: 2>&1').read()
                     os.popen('rm screen.png screen.jpg 2>&1').read()
                     os.popen('import -window root screen.png && convert screen.png screen.jpg 2>&1').read()
@@ -352,12 +360,6 @@ def process_message(message):
                 except Exception as e:
                     bot.reply_to(message, str(e))
 
-            elif user_input.lower().startswith("sys "):
-                response = str(os.popen(remove_prefix(user_input, "sys ")+" 2>&1").read())
-                if not response:
-                    response = "Done."
-                bot.reply_to(message, truncate(response, 1000))
-
             else:
                 menu(message)
         else:
@@ -365,11 +367,6 @@ def process_message(message):
     except Exception as e:
         bot.send_message(this_chat_id, "Error: "+str(e))
 
-@bot.edited_message_handler(func=lambda message: True)
-def reprocess_edited_message(message):
-    print("Mensaje editado: ", message)
-    # Volvemos a usar la misma lógica
-    process_message(message)
 
 def remove_prefix(text, prefix):
     if text.lower().startswith(prefix.lower()):
@@ -385,6 +382,7 @@ def last_chat_id():
         if not id_str:
             id_str = "0"
     return int(id_str)
+
 
 def register_chat_id(id_str):
     with open("last_admin_chat_id", "w") as f:
