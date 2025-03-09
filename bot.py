@@ -237,7 +237,7 @@ def process_message(message):
             # Crear/actualizar alias
             if text_lower.startswith("alias "):
                 # parts en crudo
-                parts = remove_prefix(message.text, "alias ").strip().split(None, 2)
+                parts = remove_prefix(message.text, "alias ").strip().split(None, 1)
                 # Nota: parted a 2, aunque sea
                 if len(parts) < 2:
                     bot.reply_to(message, "Uso: alias <nombre> <comando con o sin '?'>")
