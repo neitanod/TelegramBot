@@ -100,9 +100,9 @@ def apply_aliases(message_text):
         # No es alias, se devuelve tal cual
         return message_text
 
-    # Reemplazar '?'
-    if '?' in alias_replacement:
-        final_command = alias_replacement.replace('?', ' '.join(args))
+    # Reemplazar '${*}'
+    if '${*}' in alias_replacement:
+        final_command = alias_replacement.replace('${*}', ' '.join(args))
     else:
         final_command = alias_replacement
         if args:
@@ -385,15 +385,16 @@ def process_message(message):
                 bot.reply_to(message, truncate(response, 1000))
 
             elif user_input_lower in ["picture","photo","foto"]:
-                 try:
-                     response = str(os.popen('rm data/foto0*.jpeg').read())
-                     response = str(os.popen('export DISPLAY=:0.0;streamer -t 4 -r 2 -o data/foto00.jpeg').read())
-                     photo = open("data/foto03.jpeg", "rb")
-                     bot.send_photo(this_chat_id, photo)
-                     if not response:
-                         response = "Done."
-                 except Exception as e:
-                     bot.reply_to(message, str(e))
+                try:
+                    response = str(os.popen('rm data/foto0*.jpeg').read())
+                    response = str(os.popen('export DISPLAY=:0.0;streamer -t 4 -r 2 -o data/foto00.jpeg').read())
+                    photo = open("data/foto03.jpeg", "rb")
+                    bot.send_photo(this_chat_id, photo)
+                    if not response:
+                        response = "Done."
+                except Exception as e:
+                    bot.reply_to(message, str(e))
+
             elif user_input_lower in ["screen", "screenshot", "pantalla", "captura"]:
                 try:
                     if DISPLAY is None:
