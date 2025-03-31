@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# Directorio del script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Nombre del entorno virtual
+VENV_DIR="$SCRIPT_DIR/venv"
+
+# Comprobar si el entorno virtual ya existe
+if [ ! -d "$VENV_DIR" ]; then
+    echo "Creando entorno virtual..."
+    python3 -m venv $VENV_DIR
+fi
+
+# Activar el entorno virtual
+source $VENV_DIR/bin/activate
+
+# Comprobar e instalar las dependencias si no están instaladas
+pip freeze | grep -q pygame || pip install pygame
+
+# Establecer variables de entorno solo si no existen
+export DISPLAY=${DISPLAY:-:0}
+export XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR:-/run/user/$(id -u)}
+
+# Ejecutar el script de Python
+python "$SCRIPT_DIR/playaudio.py" "$@"

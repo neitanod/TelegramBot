@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Directorio del script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Nombre del entorno virtual
+VENV_DIR="$SCRIPT_DIR/venv"
+
+# Comprobar si el entorno virtual ya existe
+if [ ! -d "$VENV_DIR" ]; then
+    echo "Creando entorno virtual..."
+    python3 -m venv $VENV_DIR
+fi
+
+# Activar el entorno virtual
+source $VENV_DIR/bin/activate
+
+# Comprobar e instalar las dependencias si no están instaladas
+pip freeze | grep -q edge-tts || pip install edge_tts
+pip freeze | grep -q gTTS || pip install gtts
+pip freeze | grep -q pyttsx3 || pip install pyttsx3
+
+# Ejecutar el script de Python
+python "$SCRIPT_DIR/tospeech.py" "$@"
