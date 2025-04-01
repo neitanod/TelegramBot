@@ -4,6 +4,9 @@ import os
 import json
 from dotenv import load_dotenv
 import telebot
+import requests
+import os
+import subprocess
 
 load_dotenv()
 
@@ -198,7 +201,7 @@ def process_message(message):
         if text_lower in ["help", "ayuda", "menu"]:
             menu(message)
             return
-          
+
         # Manejo básico de autenticación y sesión
         if text_lower == "hi":
             if this_chat_id in authorized:
@@ -417,6 +420,79 @@ def process_message(message):
 
     except Exception as e:
         bot.send_message(this_chat_id, "Error: "+str(e))
+
+
+# @bot.message_handler(content_types=['voice'])
+# def handle_voice_message(message):
+#     if message.chat.id not in authorized:
+#         bot.reply_to(message, "No estás autorizado para enviar mensajes de audio.")
+#         return
+#
+#     try:
+#         # Crear la carpeta si no existe
+#         audio_folder = '/tmp/telegrambot/'
+#         if not os.path.exists(audio_folder):
+#             os.makedirs(audio_folder)
+#
+#         # Obtener el archivo de audio
+#         file_info = bot.get_file(message.voice.file_id)
+#         file_path = file_info.file_path
+#         file_url = f"https://api.telegram.org/file/bot{API_KEY}/{file_path}"
+#
+#         # Descargar el archivo de audio
+#         response = requests.get(file_url)
+#         if response.status_code == 200:
+#             audio_file_path = os.path.join(audio_folder, f"{message.voice.file_id}.ogg")
+#             with open(audio_file_path, 'wb') as audio_file:
+#                 audio_file.write(response.content)
+#             bot.reply_to(message, f"Audio guardado en {audio_file_path}")
+#         else:
+#             bot.reply_to(message, "Error al descargar el archivo de audio.")
+#     except Exception as e:
+#         bot.reply_to(message, f"Error al procesar el mensaje de audio: {str(e)}")
+
+
+@bot.message_handler(content_types=['voice'])
+def handle_voice_message(message):
+    if message.chat.id not in authorized:
+        bot.reply_to(message, "No estás autorizado para enviar mensajes de audio.")
+        return
+
+    try:
+        # Crear la carpeta si no existe
+        audio_folder = '/tmp/telegrambot/'
+        if not os.path.exists(audio_folder):
+            os.makedirs(audio_folder)
+
+        # Obtener el archivo de audio
+        file_info = bot.get_file(message.voice.file_id)
+        file_path = file_info.file_path
+        file_url = f"https://api.telegram.org/file/bot{API_KEY}/{file_path}"
+
+        # Descargar el archivo de audio
+        response = requests.get(file_url)
+        if response.status_code == 200:
+            input_path = os.path.join(audio_folder, f"{message.voice.file_id}_original.ogg")
+            output_path = os.path.join(audio_folder, f"{message.voice.file_id}.ogg")
+
+            # Guardar el archivo original
+            with open(input_path, 'wb') as audio_file:
+                audio_file.write(response.content)
+
+            # Convertir a Ogg Vorbis usando ffmpeg
+            subprocess.run([
+                'ffmpeg', '-y', '-i', input_path,
+                '-c:a', 'libvorbis', output_path
+            ], check=True)
+
+            # Borrar el original si querés
+            os.remove(input_path)
+
+            bot.reply_to(message, f"Audio convertido y guardado en {output_path}")
+        else:
+            bot.reply_to(message, "Error al descargar el archivo de audio.")
+    except Exception as e:
+        bot.reply_to(message, f"Error al procesar el mensaje de audio: {str(e)}")
 
 
 def remove_prefix(text, prefix):

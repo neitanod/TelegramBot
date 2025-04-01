@@ -1,6 +1,7 @@
 import whisper
 import sys
 import os
+import warnings
 
 def main():
     if len(sys.argv) != 2:
@@ -12,6 +13,9 @@ def main():
     if not os.path.exists(audio_path):
         print(f"Error: el archivo '{audio_path}' no existe.")
         sys.exit(1)
+
+    # Ignorar el warning específico sobre FP16 en CPU
+    warnings.filterwarnings("ignore", message="FP16 is not supported on CPU; using FP32 instead")
 
     # print("Cargando modelo...")
     model = whisper.load_model("medium")  # Cambiá a "small", "medium", etc. si querés más precisión
