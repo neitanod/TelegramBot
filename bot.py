@@ -296,14 +296,14 @@ def process_message(message):
 
             # Bloque para sys <comando>
             if user_input_lower.startswith("sys "):
-                cmd = remove_prefix(user_input, "sys ")
+                cmd = f"TELEGRAM_BOT_CHAT_ID={this_chat_id} " + remove_prefix(user_input, "sys ")
                 response = os.popen(cmd + " 2>&1").read()
                 if not response:
                     response = "Done."
                 bot.reply_to(message, truncate(response, 1500))
 
             elif user_input_lower.startswith("ssys "):
-                cmd = remove_prefix(user_input, "ssys ")
+                cmd = f"TELEGRAM_BOT_CHAT_ID={this_chat_id} " + remove_prefix(user_input, "ssys ")
                 response = os.popen(cmd + " 2>&1").read()
                 if response:
                     bot.reply_to(message, truncate(response, 1500))
@@ -312,8 +312,9 @@ def process_message(message):
                 if SUDO_PASSWORD is None:
                     bot.reply_to(message, "SUDO_PASSWORD is not set.")
                     return
+                cmd = f"TELEGRAM_BOT_CHAT_ID={this_chat_id} " + remove_prefix(user_input, "sudo ")
                 response = os.popen(
-                    "echo " + SUDO_PASSWORD + " | sudo -S -p \"\" " + remove_prefix(user_input, "sudo ") + " 2>&1"
+                    "echo " + SUDO_PASSWORD + " | sudo -S -p \"\" " + cmd + " 2>&1"
                 ).read()
                 if not response:
                     response = "Done."
