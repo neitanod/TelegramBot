@@ -373,30 +373,6 @@ def process_message(message):
                         response = "Done."
                     bot.reply_to(message, truncate(response, 1000))
 
-            elif user_input_lower.startswith("decir "):
-                if DBUS != "None":
-                    os.popen('notify-send "'+remove_prefix(user_input, "decir ")+'" 2>&1').read()
-                if DISPLAY == "None":
-                    bot.reply_to(message, "DISPLAY is not set.")
-                response = os.popen(
-                    'espeak "'+remove_prefix(user_input, "decir ")+'" -v '+VOICE_ES+' -p 45 -s 160 2>&1'
-                ).read()
-                if not response:
-                    response = "Done."
-                bot.reply_to(message, truncate(response, 1000))
-
-            elif user_input_lower.startswith("say "):
-                if DBUS != "None":
-                    os.popen('notify-send "'+remove_prefix(user_input, "say ")+'" 2>&1').read()
-                if DISPLAY is None:
-                    bot.reply_to(message, "DISPLAY is not set.")
-                response = os.popen(
-                    'espeak "'+remove_prefix(user_input, "say ")+'" -v '+VOICE_EN+' -p 45 -s 160 2>&1'
-                ).read()
-                if not response:
-                    response = "Done."
-                bot.reply_to(message, truncate(response, 1000))
-
             elif user_input_lower in ["picture","photo","foto"]:
                 try:
                     response = str(os.popen('rm data/foto0*.jpeg').read())
@@ -469,6 +445,7 @@ def handle_voice_message(message):
         return
 
     try:
+        this_chat_id = message.chat.id
         # Crear la carpeta si no existe
         audio_folder = '/tmp/telegrambot/'
         if not os.path.exists(audio_folder):
@@ -498,7 +475,9 @@ def handle_voice_message(message):
             # Borrar el original si querés
             os.remove(input_path)
 
-            bot.reply_to(message, f"Audio convertido y guardado en {output_path}")
+            cmd = f"TELEGRAM_BOT_CHAT_ID={this_chat_id} ./transcribe {output_path}"
+            transcription = os.popen(cmd + " 2>&1").read()
+            bot.reply_to(message, f"{transcription}")
         else:
             bot.reply_to(message, "Error al descargar el archivo de audio.")
     except Exception as e:
