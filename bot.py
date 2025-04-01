@@ -216,14 +216,17 @@ def process_message(message):
             # (Podemos ignorar mayúsculas/minúsculas o no, depende de la preferencia)
             if remove_prefix(message.text, "id ") == PASSWORD or remove_prefix(message.text, "login ") == PASSWORD:
                 authorized.append(this_chat_id)
-                register_chat_id(str(this_chat_id))
+                persist_chat_ids()
                 bot.send_message(this_chat_id, "Authorized")
                 return
 
         elif text_lower in ["exit", "quit", "logout"]:
-            authorized.clear()
-            register_chat_id("0")
-            bot.reply_to(message, "Logged out.")
+            if this_chat_id in authorized:
+                authorized.remove(this_chat_id)
+                persist_chat_ids()
+                bot.reply_to(message, "Logged out.")
+            else:
+                bot.reply_to(message, "No estás autorizado.")
             return
 
         elif text_lower in ["reset", "restart"]:
@@ -297,7 +300,13 @@ def process_message(message):
                 response = os.popen(cmd + " 2>&1").read()
                 if not response:
                     response = "Done."
-                bot.reply_to(message, truncate(response, 1000))
+                bot.reply_to(message, truncate(response, 1500))
+
+            elif user_input_lower.startswith("ssys "):
+                cmd = remove_prefix(user_input, "ssys ")
+                response = os.popen(cmd + " 2>&1").read()
+                if response:
+                    bot.reply_to(message, truncate(response, 1500))
 
             elif user_input_lower.startswith("sudo "):
                 if SUDO_PASSWORD is None:
@@ -501,19 +510,19 @@ def remove_prefix(text, prefix):
     return text
 
 
-def last_chat_id():
-    if not os.path.exists("last_admin_chat_id"):
-        return 0
-    with open("last_admin_chat_id", "r") as f:
-        id_str = f.readline()
-        if not id_str:
-            id_str = "0"
-    return int(id_str)
+def last_chat_ids():
+    if not os.path.exists("last_admin_chat_ids"):
+        return []
+    with open("last_admin_chat_ids", "r") as f:
+        ids_str = f.read()
+        if not ids_str:
+            return []
+    return list(map(int, ids_str.split(',')))
 
 
-def register_chat_id(id_str):
-    with open("last_admin_chat_id", "w") as f:
-        f.write(id_str)
+def persist_chat_ids():
+    with open("last_admin_chat_ids", "w") as f:
+        f.write(','.join(map(str, authorized)))
 
 
 def truncate(message, max_bytes):
@@ -536,9 +545,8 @@ def create_folder(folder):
 create_folder('data')
 
 # Cargamos el último chat ID que estaba autorizado antes (si lo hubiera)
-last_chat_id_int = last_chat_id()
-if last_chat_id_int > 0:
-    authorized.append(last_chat_id_int)
+last_chat_ids_list = last_chat_ids()
+authorized.extend(last_chat_ids_list)
 
 # 1) Carga los aliases predefinidos (read-only)
 load_builtin_aliases()

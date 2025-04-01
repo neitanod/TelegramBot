@@ -8,3 +8,4 @@ aliases.json
 data/*
 venv
 __pycache__
+last_admin_chat_ids

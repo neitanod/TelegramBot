@@ -18,4 +18,4 @@ if [ ! -f "$TMP_AUDIO" ]; then
 fi
 
 # Enviar como nota de voz
-./botsend --voice="$TMP_AUDIO"
+./botsend --voice="$TMP_AUDIO" --message="$TEXT"

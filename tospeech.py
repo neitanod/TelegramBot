@@ -20,8 +20,10 @@ def speak_with_edge_tts(text, args):
     import asyncio
     import edge_tts
 
-    voice = args.get("voice", "es-AR-ElenaNeural")
-    rate = args.get("rate", "+0%")
+    # voice = args.get("voice", "es-AR-ElenaNeural")
+    # voice = args.get("voice", "es-UY-ValentinaNeural")  # Voz femenina de Uruguay
+    voice = args.get("voice", "es-UY-MateoNeural")  # Voz masculina de Uruguay
+    rate = args.get("rate", "+10%")
     pitch = args.get("pitch", "+0%")
     output_dir = ensure_output_directory()
     output = os.path.join(output_dir, generate_unique_filename("mp3"))
