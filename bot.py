@@ -79,6 +79,15 @@ def save_aliases():
     except Exception as e:
         print(f"Error guardando aliases: {str(e)}")
 
+def ask_ai(chat_id, query):
+    try:
+        cmd = f"TELEGRAM_BOT_CHAT_ID={chat_id} ./ask_ai \"{query}\""
+        print(f"{cmd} 2>&1");
+        response = os.popen(cmd + " 2>&1").read()
+        return response
+    except Exception as e:
+        print(f"Error asking AI: {str(e)}")
+        return f"Lo siento, ha ocurrido un error: {str(e)}."
 
 def apply_aliases(message_text):
     """
@@ -300,13 +309,13 @@ def process_message(message):
                 response = os.popen(cmd + " 2>&1").read()
                 if not response:
                     response = "Done."
-                bot.reply_to(message, truncate(response, 1500))
+                bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower.startswith("ssys "):
                 cmd = f"TELEGRAM_BOT_CHAT_ID={this_chat_id} " + remove_prefix(user_input, "ssys ")
                 response = os.popen(cmd + " 2>&1").read()
                 if response:
-                    bot.reply_to(message, truncate(response, 1500))
+                    bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower.startswith("sudo "):
                 if SUDO_PASSWORD is None:
@@ -318,7 +327,7 @@ def process_message(message):
                 ).read()
                 if not response:
                     response = "Done."
-                bot.reply_to(message, truncate(response, 1000))
+                bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower in ["reboot"]:
                 if SUDO_PASSWORD is None:
@@ -329,7 +338,7 @@ def process_message(message):
                 ).read()
                 if not response:
                     response = "Done."
-                bot.reply_to(message, truncate(response, 1000))
+                bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower in ["shutdown"]:
                 if SUDO_PASSWORD is None:
@@ -340,7 +349,7 @@ def process_message(message):
                 ).read()
                 if not response:
                     response = "Done."
-                bot.reply_to(message, truncate(response, 1000))
+                bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower in ["lock"]:
                 if SUDO_PASSWORD is None:
@@ -351,7 +360,7 @@ def process_message(message):
                 ).read()
                 if not response:
                     response = "Done."
-                bot.reply_to(message, truncate(response, 1000))
+                bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower in ["unlock"]:
                 if SUDO_PASSWORD is None:
@@ -362,7 +371,7 @@ def process_message(message):
                 ).read()
                 if not response:
                     response = "Done."
-                bot.reply_to(message, truncate(response, 1000))
+                bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower.startswith("notify "):
                 if DBUS == "None":
@@ -371,7 +380,7 @@ def process_message(message):
                     response = os.popen('notify-send "'+remove_prefix(user_input, "notify ")+'" 2>&1').read()
                     if not response:
                         response = "Done."
-                    bot.reply_to(message, truncate(response, 1000))
+                    bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower in ["picture","photo","foto"]:
                 try:
@@ -398,8 +407,9 @@ def process_message(message):
                 except Exception as e:
                     bot.reply_to(message, str(e))
             else:
-                # Si está autorizado pero no coincide con ningún comando:
-                bot.reply_to(message, "Comando desconocido. Use 'help' para ver la ayuda.")
+                # Si está autorizado pero no coincide con ningún comando, ejecutamos el script ask_ai
+                response = ask_ai(message.chat.id, message.text)
+                bot.send_message(message.chat.id, truncate(response, 2500))
         else:
             # Si NO está autorizado y escribe algo distinto a hi/login/etc.
             bot.reply_to(message, "Comando desconocido. Use 'help' para ver la ayuda.")
@@ -477,7 +487,12 @@ def handle_voice_message(message):
 
             cmd = f"TELEGRAM_BOT_CHAT_ID={this_chat_id} ./transcribe {output_path}"
             transcription = os.popen(cmd + " 2>&1").read()
-            bot.reply_to(message, f"{transcription}")
+            bot.reply_to(message, f"Entendí: {transcription}")
+            ai_response = ask_ai(message.chat.id, transcription)
+            # bot.send_message(this_chat_id, f"{truncate(ai_response, 2500)}")
+            cmd = f"TELEGRAM_BOT_CHAT_ID={this_chat_id} ./botsay \"{ai_response}\""
+            botsay_response = os.popen(cmd + " 2>&1").read()
+
         else:
             bot.reply_to(message, "Error al descargar el archivo de audio.")
     except Exception as e:

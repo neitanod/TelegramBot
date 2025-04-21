@@ -4,7 +4,8 @@ while true; do
     pwd
     # /usr/bin/python3 ./bot.py 2>&1 >> log.txt
     # /home/sebas/telegrambot/bin/python3 ./bot.py 2>&1 >> log.txt
+    echo -n  "=== " >> log.txt
+    date >> log.txt
     /home/sebas/miniconda3/bin/python3 ./bot.py 2>&1 >> log.txt
     sleep 1
-    echo "===\n" >> log.txt
 done

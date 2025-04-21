@@ -1,0 +1,3 @@
+#!/bin/bash
+cd ~/doc/prj/mcp/python/mcp-client/
+./ask "$@" 2>>/tmp/err.txt 
