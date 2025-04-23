@@ -81,7 +81,7 @@ def save_aliases():
 
 def ask_ai(chat_id, query):
     try:
-        cmd = f"TELEGRAM_BOT_CHAT_ID={chat_id} ./ask_ai \"{query}\""
+        cmd = f"TELEGRAM_BOT_USER_ID=\"{chat_id}\" TELEGRAM_BOT_CHAT_ID=\"{chat_id}\" ./ask_ai \"{query}\""
         print(f"{cmd} 2>&1");
         response = os.popen(cmd + " 2>&1").read()
         return response
@@ -238,10 +238,24 @@ def process_message(message):
                 bot.reply_to(message, "No estás autorizado.")
             return
 
-        elif text_lower in ["reset", "restart"]:
+        elif text_lower in ["restart"]:
             authorized.clear()
             bot.reply_to(message, "Restarting bot.")
             bot.stop_polling()
+            return
+
+        elif text_lower in ["reset"]:
+            bot.reply_to(message, "Saving session summary and starting a new session.")
+            cmd = f"TELEGRAM_BOT_USER_ID=\"{this_chat_id}\" TELEGRAM_BOT_CHAT_ID=\"{this_chat_id}\" ./ask_ai_reset"
+            print(f"{cmd} 2>&1");
+            response = os.popen(cmd + " 2>&1").read()
+            return
+
+        elif text_lower in ["forget", "discard"]:
+            bot.reply_to(message, "Session discarded. New session started.")
+            cmd = f"TELEGRAM_BOT_USER_ID=\"{this_chat_id}\" TELEGRAM_BOT_CHAT_ID=\"{this_chat_id}\" ./ask_ai_discard"
+            print(f"{cmd} 2>&1");
+            response = os.popen(cmd + " 2>&1").read()
             return
 
         # Aquí sólo entran usuarios autorizados

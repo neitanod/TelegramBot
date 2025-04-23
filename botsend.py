@@ -23,8 +23,8 @@ def last_chat_ids():
 
 CHAT_IDS = last_chat_ids()
 
-if not API_KEY or not CHAT_IDS:
-    print("Faltan API_KEY o CHAT_IDS en el entorno.")
+if not API_KEY:
+    print("Falta API_KEY en el entorno.")
     sys.exit(1)
 
 bot = telebot.TeleBot(API_KEY)

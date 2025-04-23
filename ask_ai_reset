@@ -1,0 +1,4 @@
+#!/bin/bash
+cd ~/doc/prj/mcp/python/mcp-client/
+./ask "Crea un sumario de esta charla y guardatelo." 2>>/tmp/err.txt 
+rm ./data/"${TELEGRAM_BOT_USER_ID}"/session.json 2>>/tmp/err.txt 
