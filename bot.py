@@ -7,8 +7,29 @@ import telebot
 import requests
 import os
 import subprocess
+import logging
+from logging.handlers import RotatingFileHandler
 
 load_dotenv()
+
+# --- Logging configuration ---
+LOG_FILE = os.getenv("LOG_FILE", "bot.log")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+LOG_MAX_BYTES = int(os.getenv("LOG_MAX_BYTES", "1048576"))  # 1 MB
+LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "5"))
+
+log_dir = os.path.dirname(LOG_FILE)
+if log_dir and not os.path.exists(log_dir):
+    os.makedirs(log_dir)
+
+# Configure rotating file handler
+handler = RotatingFileHandler(LOG_FILE, maxBytes=LOG_MAX_BYTES, backupCount=LOG_BACKUP_COUNT, encoding="utf-8")
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+handler.setFormatter(formatter)
+
+# Apply configuration to root logger
+logging.basicConfig(level=LOG_LEVEL, handlers=[handler], force=True)
+# --- End of logging configuration ---
 
 API_KEY = str(os.getenv('API_KEY'))
 PASSWORD = str(os.getenv('PASSWORD'))
@@ -41,7 +62,7 @@ def load_builtin_aliases():
     """Carga los aliases inmutables desde el archivo builtin_aliases.json (si existe)."""
     global builtin_aliases
     if not os.path.exists(BUILTIN_ALIAS_FILE):
-        print(f"No se encontró archivo {BUILTIN_ALIAS_FILE}. Se usará un diccionario vacío.")
+        logging.warning(f"No se encontró archivo {BUILTIN_ALIAS_FILE}. Se usará un diccionario vacío.")
         builtin_aliases = {}
         return
     try:
@@ -50,9 +71,9 @@ def load_builtin_aliases():
             if isinstance(data, dict):
                 builtin_aliases = data
             else:
-                print("Formato de aliases inmutables inválido.")
+                logging.error("Formato de aliases inmutables inválido.")
     except Exception as e:
-        print(f"Error cargando aliases inmutables: {str(e)}")
+        logging.error(f"Error cargando aliases inmutables: {str(e)}")
         builtin_aliases = {}
 
 
@@ -67,9 +88,9 @@ def load_aliases():
             if isinstance(data, dict):
                 aliases = data
             else:
-                print("Formato de alias inválido en JSON.")
+                logging.error("Formato de alias inválido en JSON.")
     except Exception as e:
-        print(f"Error cargando aliases: {str(e)}")
+        logging.error(f"Error cargando aliases: {str(e)}")
 
 
 def save_aliases():
@@ -77,16 +98,16 @@ def save_aliases():
         with open(ALIAS_FILE, 'w', encoding='utf-8') as f:
             json.dump(aliases, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        print(f"Error guardando aliases: {str(e)}")
+        logging.error(f"Error guardando aliases: {str(e)}")
 
 def ask_ai(chat_id, query):
     try:
         cmd = f"TELEGRAM_BOT_USER_ID=\"{chat_id}\" TELEGRAM_BOT_CHAT_ID=\"{chat_id}\" ./ask_ai \"{query}\""
-        print(f"{cmd} 2>&1");
+        logging.info(f"Executing command: {cmd}")
         response = os.popen(cmd + " 2>&1").read()
         return response
     except Exception as e:
-        print(f"Error asking AI: {str(e)}")
+        logging.error(f"Error asking AI: {str(e)}")
         return f"Lo siento, ha ocurrido un error: {str(e)}."
 
 def apply_aliases(message_text):
@@ -151,14 +172,17 @@ def menu(message):
 
         if not help_content:
             help_content = "No hay ayuda disponible."
+        logging.info(f"Sending response to {message.chat.id}: {help_content}")
         bot.reply_to(message, help_content, parse_mode="Markdown")
     else:
+        logging.info(f"Sending response to {message.chat.id}: Just say hi")
         bot.reply_to(message, "Just say hi")
 
 
 @bot.message_handler(commands=['aliases'])
 def list_aliases(message):
     if message.chat.id not in authorized:
+        logging.info(f"Sending response to {message.chat.id}: No estás autorizado.")
         bot.reply_to(message, "No estás autorizado.")
         return
 
@@ -193,11 +217,13 @@ def list_aliases(message):
         user_text = "No hay aliases de usuario.\n"
 
     final_msg = builtin_text + "\n" + user_text
+    logging.info(f"Sending response to {message.chat.id}: {final_msg}")
     bot.reply_to(message, final_msg, parse_mode="Markdown")
 
 
 @bot.message_handler()
 def process_message(message):
+    logging.info(f"Received text message from {message.from_user.id} ({message.from_user.username}): {message.text}")
     this_chat_id = message.chat.id
     try:
         if not message.text:
@@ -215,9 +241,13 @@ def process_message(message):
         if text_lower == "hi":
             if this_chat_id in authorized:
                 username = os.popen("whoami 2>&1").read()
-                bot.send_message(this_chat_id, "Hi " + username)
+                response_text = "Hi " + username
+                logging.info(f"Sending response to {this_chat_id}: {response_text}")
+                bot.send_message(this_chat_id, response_text)
             else:
-                bot.send_message(this_chat_id, "Hi there")
+                response_text = "Hi there"
+                logging.info(f"Sending response to {this_chat_id}: {response_text}")
+                bot.send_message(this_chat_id, response_text)
             return
 
         elif text_lower.startswith("id ") or text_lower.startswith("login "):
@@ -226,35 +256,47 @@ def process_message(message):
             if remove_prefix(message.text, "id ") == PASSWORD or remove_prefix(message.text, "login ") == PASSWORD:
                 authorized.append(this_chat_id)
                 persist_chat_ids()
-                bot.send_message(this_chat_id, "Authorized")
+                response_text = "Authorized"
+                logging.info(f"Sending response to {this_chat_id}: {response_text}")
+                bot.send_message(this_chat_id, response_text)
                 return
 
         elif text_lower in ["exit", "quit", "logout"]:
             if this_chat_id in authorized:
                 authorized.remove(this_chat_id)
                 persist_chat_ids()
-                bot.reply_to(message, "Logged out.")
+                response_text = "Logged out."
+                logging.info(f"Sending response to {this_chat_id}: {response_text}")
+                bot.reply_to(message, response_text)
             else:
-                bot.reply_to(message, "No estás autorizado.")
+                response_text = "No estás autorizado."
+                logging.info(f"Sending response to {this_chat_id}: {response_text}")
+                bot.reply_to(message, response_text)
             return
 
         elif text_lower in ["restart"]:
             authorized.clear()
-            bot.reply_to(message, "Restarting bot.")
+            response_text = "Restarting bot."
+            logging.info(f"Sending response to {this_chat_id}: {response_text}")
+            bot.reply_to(message, response_text)
             bot.stop_polling()
             return
 
         elif text_lower in ["reset"]:
-            bot.reply_to(message, "Saving session summary and starting a new session.")
+            response_text = "Saving session summary and starting a new session."
+            logging.info(f"Sending response to {this_chat_id}: {response_text}")
+            bot.reply_to(message, response_text)
             cmd = f"TELEGRAM_BOT_USER_ID=\"{this_chat_id}\" TELEGRAM_BOT_CHAT_ID=\"{this_chat_id}\" ./ask_ai_reset"
-            print(f"{cmd} 2>&1");
+            logging.info(f"Executing command: {cmd}")
             response = os.popen(cmd + " 2>&1").read()
             return
 
         elif text_lower in ["forget", "discard"]:
-            bot.reply_to(message, "Session discarded. New session started.")
+            response_text = "Session discarded. New session started."
+            logging.info(f"Sending response to {this_chat_id}: {response_text}")
+            bot.reply_to(message, response_text)
             cmd = f"TELEGRAM_BOT_USER_ID=\"{this_chat_id}\" TELEGRAM_BOT_CHAT_ID=\"{this_chat_id}\" ./ask_ai_discard"
-            print(f"{cmd} 2>&1");
+            logging.info(f"Executing command: {cmd}")
             response = os.popen(cmd + " 2>&1").read()
             return
 
@@ -269,14 +311,18 @@ def process_message(message):
                 parts = remove_prefix(message.text, "alias ").strip().split(None, 1)
                 # Nota: parted a 2, aunque sea
                 if len(parts) < 2:
-                    bot.reply_to(message, "Uso: alias <nombre> <comando con o sin '?'>")
+                    response_text = "Uso: alias <nombre> <comando con o sin '?'>"
+                    logging.info(f"Sending response to {message.chat.id}: {response_text}")
+                    bot.reply_to(message, response_text)
                     return
                 alias_name = parts[0].strip()
                 alias_command = parts[1].strip()
 
                 # Validamos si alias_name está en la lista prohibida
                 if alias_name.lower() in PROHIBITED_ALIAS_NAMES:
-                    bot.reply_to(message, f"No se permite crear un alias con el nombre '{alias_name}'")
+                    response_text = f"No se permite crear un alias con el nombre '{alias_name}'"
+                    logging.info(f"Sending response to {message.chat.id}: {response_text}")
+                    bot.reply_to(message, response_text)
                     return
 
                 # Si ya existe, conservamos la descripción
@@ -289,28 +335,38 @@ def process_message(message):
                     'description': old_description
                 }
                 save_aliases()
-                bot.reply_to(message, f"Alias '{alias_name}' registrado/actualizado.")
+                response_text = f"Alias '{alias_name}' registrado/actualizado."
+                logging.info(f"Sending response to {message.chat.id}: {response_text}")
+                bot.reply_to(message, response_text)
                 return
 
             # Describir alias existente
             if text_lower.startswith("describe alias "):
                 parts = remove_prefix(message.text, "describe alias ").strip().split(None, 1)
                 if len(parts) < 2:
-                    bot.reply_to(message, "Uso: describe alias <nombre> <descripcion>")
+                    response_text = "Uso: describe alias <nombre> <descripcion>"
+                    logging.info(f"Sending response to {message.chat.id}: {response_text}")
+                    bot.reply_to(message, response_text)
                     return
                 alias_name = parts[0].strip().lower()
                 alias_desc = parts[1].strip()
                 if alias_name not in aliases:
-                    bot.reply_to(message, f"El alias '{alias_name}' no existe.")
+                    response_text = f"El alias '{alias_name}' no existe."
+                    logging.info(f"Sending response to {message.chat.id}: {response_text}")
+                    bot.reply_to(message, response_text)
                     return
                 aliases[alias_name]['description'] = alias_desc
                 save_aliases()
-                bot.reply_to(message, f"Descripción del alias '{alias_name}' actualizada.")
+                response_text = f"Descripción del alias '{alias_name}' actualizada."
+                logging.info(f"Sending response to {message.chat.id}: {response_text}")
+                bot.reply_to(message, response_text)
                 return
 
             if text_lower.startswith("load_aliases"):
                 load_aliases()
-                bot.reply_to(message, "Aliases cargados desde archivo.")
+                response_text = "Aliases cargados desde archivo."
+                logging.info(f"Sending response to {message.chat.id}: {response_text}")
+                bot.reply_to(message, response_text)
                 return
 
             # Aplicamos alias si corresponde
@@ -323,17 +379,21 @@ def process_message(message):
                 response = os.popen(cmd + " 2>&1").read()
                 if not response:
                     response = "Done."
+                logging.info(f"Sending response to {this_chat_id}: {response}")
                 bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower.startswith("ssys "):
                 cmd = f"TELEGRAM_BOT_CHAT_ID={this_chat_id} " + remove_prefix(user_input, "ssys ")
                 response = os.popen(cmd + " 2>&1").read()
                 if response:
+                    logging.info(f"Sending response to {this_chat_id}: {response}")
                     bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower.startswith("sudo "):
                 if SUDO_PASSWORD is None:
-                    bot.reply_to(message, "SUDO_PASSWORD is not set.")
+                    response_text = "SUDO_PASSWORD is not set."
+                    logging.info(f"Sending response to {this_chat_id}: {response_text}")
+                    bot.reply_to(message, response_text)
                     return
                 cmd = f"TELEGRAM_BOT_CHAT_ID={this_chat_id} " + remove_prefix(user_input, "sudo ")
                 response = os.popen(
@@ -341,59 +401,75 @@ def process_message(message):
                 ).read()
                 if not response:
                     response = "Done."
+                logging.info(f"Sending response to {this_chat_id}: {response}")
                 bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower in ["reboot"]:
                 if SUDO_PASSWORD is None:
-                    bot.reply_to(message, "SUDO_PASSWORD is not set.")
+                    response_text = "SUDO_PASSWORD is not set."
+                    logging.info(f"Sending response to {message.chat.id}: {response_text}")
+                    bot.reply_to(message, response_text)
                     return
                 response = os.popen(
                     "echo " + SUDO_PASSWORD + " | sudo -S -p '' shutdown -r now 2>&1"
                 ).read()
                 if not response:
                     response = "Done."
+                logging.info(f"Sending response to {message.chat.id}: {response}")
                 bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower in ["shutdown"]:
                 if SUDO_PASSWORD is None:
-                    bot.reply_to(message, "SUDO_PASSWORD is not set.")
+                    response_text = "SUDO_PASSWORD is not set."
+                    logging.info(f"Sending response to {message.chat.id}: {response_text}")
+                    bot.reply_to(message, response_text)
                     return
                 response = os.popen(
                     "echo " + SUDO_PASSWORD + " | sudo -S -p '' shutdown now 2>&1"
                 ).read()
                 if not response:
                     response = "Done."
+                logging.info(f"Sending response to {message.chat.id}: {response}")
                 bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower in ["lock"]:
                 if SUDO_PASSWORD is None:
-                    bot.reply_to(message, "SUDO_PASSWORD is not set.")
+                    response_text = "SUDO_PASSWORD is not set."
+                    logging.info(f"Sending response to {message.chat.id}: {response_text}")
+                    bot.reply_to(message, response_text)
                     return
                 response = os.popen(
                     "echo " + SUDO_PASSWORD + " | sudo -S -p '' loginctl lock-sessions 2>&1"
                 ).read()
                 if not response:
                     response = "Done."
+                logging.info(f"Sending response to {message.chat.id}: {response}")
                 bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower in ["unlock"]:
                 if SUDO_PASSWORD is None:
-                    bot.reply_to(message, "SUDO_PASSWORD is not set.")
+                    response_text = "SUDO_PASSWORD is not set."
+                    logging.info(f"Sending response to {message.chat.id}: {response_text}")
+                    bot.reply_to(message, response_text)
                     return
                 response = os.popen(
                     "echo " + SUDO_PASSWORD + " | sudo -S -p '' loginctl unlock-sessions 2>&1"
                 ).read()
                 if not response:
                     response = "Done."
+                logging.info(f"Sending response to {message.chat.id}: {response}")
                 bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower.startswith("notify "):
                 if DBUS == "None":
-                    bot.reply_to(message, "DBUS_SESSION_BUS_ADDRESS is not set.")
+                    response_text = "DBUS_SESSION_BUS_ADDRESS is not set."
+                    logging.info(f"Sending response to {message.chat.id}: {response_text}")
+                    bot.reply_to(message, response_text)
                 else:
                     response = os.popen('notify-send "'+remove_prefix(user_input, "notify ")+'" 2>&1').read()
                     if not response:
                         response = "Done."
+                    logging.info(f"Sending response to {message.chat.id}: {response}")
                     bot.reply_to(message, truncate(response, 2500))
 
             elif user_input_lower in ["picture","photo","foto"]:
@@ -401,35 +477,48 @@ def process_message(message):
                     response = str(os.popen('rm data/foto0*.jpeg').read())
                     response = str(os.popen('export DISPLAY=:0.0;streamer -t 4 -r 2 -o data/foto00.jpeg').read())
                     photo = open("data/foto03.jpeg", "rb")
+                    logging.info(f"Sending photo to {this_chat_id}")
                     bot.send_photo(this_chat_id, photo)
                     if not response:
                         response = "Done."
                 except Exception as e:
-                    bot.reply_to(message, str(e))
+                    response_text = str(e)
+                    logging.info(f"Sending response to {message.chat.id}: {response_text}")
+                    bot.reply_to(message, response_text)
 
             elif user_input_lower in ["screen", "screenshot", "pantalla", "captura"]:
                 try:
                     if DISPLAY is None:
-                        bot.reply_to(message, "DISPLAY is not set.")
+                        response_text = "DISPLAY is not set."
+                        logging.info(f"Sending response to {message.chat.id}: {response_text}")
+                        bot.reply_to(message, response_text)
                     os.popen('xhost +local: 2>&1').read()
                     # Borramos las capturas previas
                     os.popen('rm data/screen.png data/screen.jpg 2>&1').read()
                     # Tomamos la nueva captura, guardamos en data
                     os.popen('import -window root data/screen.png && convert data/screen.png data/screen.jpg 2>&1').read()
                     with open("data/screen.jpg", "rb") as screen:
+                        logging.info(f"Sending photo to {this_chat_id}")
                         bot.send_photo(this_chat_id, screen)
                 except Exception as e:
-                    bot.reply_to(message, str(e))
+                    response_text = str(e)
+                    logging.info(f"Sending response to {message.chat.id}: {response_text}")
+                    bot.reply_to(message, response_text)
             else:
                 # Si está autorizado pero no coincide con ningún comando, ejecutamos el script ask_ai
                 response = ask_ai(message.chat.id, message.text)
+                logging.info(f"Sending response to {message.chat.id}: {response}")
                 bot.send_message(message.chat.id, truncate(response, 2500))
         else:
             # Si NO está autorizado y escribe algo distinto a hi/login/etc.
-            bot.reply_to(message, "Comando desconocido. Use 'help' para ver la ayuda.")
+            response_text = "Comando desconocido. Use 'help' para ver la ayuda."
+            logging.info(f"Sending response to {message.chat.id}: {response_text}")
+            bot.reply_to(message, response_text)
 
     except Exception as e:
-        bot.send_message(this_chat_id, "Error: "+str(e))
+        response_text = "Error: "+str(e)
+        logging.info(f"Sending response to {this_chat_id}: {response_text}")
+        bot.send_message(this_chat_id, response_text)
 
 
 # @bot.message_handler(content_types=['voice'])
@@ -464,8 +553,11 @@ def process_message(message):
 
 @bot.message_handler(content_types=['voice'])
 def handle_voice_message(message):
+    logging.info(f"Received voice message from {message.from_user.id} ({message.from_user.username})")
     if message.chat.id not in authorized:
-        bot.reply_to(message, "No estás autorizado para enviar mensajes de audio.")
+        response_text = "No estás autorizado para enviar mensajes de audio."
+        logging.info(f"Sending response to {message.chat.id}: {response_text}")
+        bot.reply_to(message, response_text)
         return
 
     try:
@@ -501,16 +593,22 @@ def handle_voice_message(message):
 
             cmd = f"TELEGRAM_BOT_CHAT_ID={this_chat_id} ./transcribe {output_path}"
             transcription = os.popen(cmd + " 2>&1").read()
-            bot.reply_to(message, f"Entendí: {transcription}")
+            response_text = f"Entendí: {transcription}"
+            logging.info(f"Sending response to {message.chat.id}: {response_text}")
+            bot.reply_to(message, response_text)
             ai_response = ask_ai(message.chat.id, transcription)
             # bot.send_message(this_chat_id, f"{truncate(ai_response, 2500)}")
             cmd = f"TELEGRAM_BOT_CHAT_ID={this_chat_id} ./botsay \"{ai_response}\""
             botsay_response = os.popen(cmd + " 2>&1").read()
 
         else:
-            bot.reply_to(message, "Error al descargar el archivo de audio.")
+            response_text = "Error al descargar el archivo de audio."
+            logging.info(f"Sending response to {message.chat.id}: {response_text}")
+            bot.reply_to(message, response_text)
     except Exception as e:
-        bot.reply_to(message, f"Error al procesar el mensaje de audio: {str(e)}")
+        response_text = f"Error al procesar el mensaje de audio: {str(e)}"
+        logging.info(f"Sending response to {message.chat.id}: {response_text}")
+        bot.reply_to(message, response_text)
 
 
 def remove_prefix(text, prefix):
@@ -546,9 +644,9 @@ def create_folder(folder):
     if not os.path.exists(folder):
         try:
             os.makedirs(folder)
-            print(f"Carpeta '{folder}' creada exitosamente.")
+            logging.info(f"Carpeta '{folder}' creada exitosamente.")
         except Exception as e:
-            print(f"Error al crear carpeta '{folder}': {str(e)}")
+            logging.error(f"Error al crear carpeta '{folder}': {str(e)}")
 
 # Llamamos a la función para crear la carpeta 'data' si no existe
 create_folder('data')
@@ -564,7 +662,11 @@ load_builtin_aliases()
 load_aliases()
 
 # Iniciamos el bot
-bot.polling()
+logging.info(f"Starting Telegram bot polling (level={LOG_LEVEL}, file='{LOG_FILE}')")
+try:
+    bot.polling()
+except Exception as e:
+    logging.exception(f"Unhandled exception while polling: {e}")
 
 # Actualizamos last_chat_id
-last_chat_id_int = last_chat_id()
+#last_chat_id_int = last_chat_id()

@@ -12,7 +12,8 @@ Available commands:
 - *screen* / *pantalla*  Take screenshot
 - *photo* / *picture* / *foto*   Take picture with the webcam
 - *exit* / *quit* / *logout*   Logout bot
-- *reset* / *restart*  Restart bot
+- *reset*  Start new session (forget previous context)
+- *restart*  Restart bot
 - *update*           Update bot
 - *alias <alias_name> <aliased_command>*    Add / update an aliased command
 - *describe alias <alias_name> <alias_description>*    Add / update an aliased command

@@ -1,0 +1,11 @@
+#!/bin/bash
+cd ~/doc/prj/mcp/python/mcp-client/
+RESPONSE=$(./ask "$@" 2>>/tmp/err.txt)
+
+#TELEGRAM_BOT_CHAT_ID=1404811231
+
+if [ "$RESPONSE" != "NOOP" ]; then
+    echo $RESPONSE
+    cd ~/doc/prj/TelegramBot
+    botsend --chat-id "$TELEGRAM_BOT_CHAT_ID" --message "$RESPONSE"
+fi
